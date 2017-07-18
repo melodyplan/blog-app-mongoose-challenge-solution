@@ -83,7 +83,7 @@ describe('Blog API resource', function() {
         });
     });
 
-    it('should return posst with the right fields', function() {
+    it('should return post with the right fields', function() {
       let resBlogPost;
       return chai.request(app)
         .get('/posts')
@@ -105,12 +105,94 @@ describe('Blog API resource', function() {
           .then(function(post) {
             resBlogPost.id.should.equal(post.id);
             resBlogPost.title.should.equal(post.title);
+            //is author should.contain since there is a firstName and lastName?
             resBlogPost.author.should.equal(post.author);
             resBlogPost.content.should.equal(post.content)
           });
     });
   });
 
+  describe('POST endpoint', function() {
+    it('should add a new blog post', function() {
 
+      const newBlogPost = generateBlogPostData();
 
-})
+      return chai.request(app)
+        .post('/posts')
+        .send(newBlogPost)
+        .then(function(res) {
+          res.should.have.status(201);
+          res.should.be.json;
+          res.body.should.be.a('object');
+          res.body.should.include.keys(
+            'id', 'title', 'author', 'content');
+          res.body.title.should.equal(newBlogPost.title);
+          res.body.id.should.not.be.null;
+          res.body.author.should.equal(newBlogPost.author);
+          res.body.content.should.equal(newBlogPost.content);
+
+          return BlogPost.findById(res.body.id);
+        })
+        .then(function(post) {
+          post.title.should.equal(newBlogPost.title);
+          post.author.should.equal(newBlogPost.author);
+          post.content.should.equal(newBlogPost.content);
+        });
+    });
+  });
+
+  describe('PUT endpoint', function() {
+    it('should update fields you send over', function() {
+      const updateData = {
+        title: 'See the light and the wind of the sea',
+        author: {
+          firstName: 'it calls'
+          lastName: 'to me'
+        },
+        content: 'and no one knows, how far it gooooesss'
+      };
+      return BlogPost
+        .findOne()
+        .exec()
+        .then(function(post) {
+          updateData.id = post.id;
+
+          return chai.request(app)
+            .put(`/posts/${post.id}`)
+            .send(updateData);
+        })
+        .then(fundtion(res) {
+          res.should.have.status(204);
+
+          return BlogPost.findById(updateData.id).exec();
+        })
+        .then(function(post) {
+          post.title.should.equal(updateData.title);
+          post.author.should.equal(updateData.author);
+          post.content.should.equal(updateData.content)
+        });
+    });
+  });
+
+  describe('DELETE endpoint', function() {
+    it('delete a blog post by id', function() {
+      let post;
+
+      return BlogPost
+        .findOne()
+        .exec()
+        //why underscore again? is that just the convention?
+        .then(function(_post) {
+          post = _post;
+          return chai.request(app).delete(`/posts/${post.id}`);
+        })
+        .then(function(res) {
+          res.should.have.status(204);
+          return BlogPost.findById(post.id).exec();
+        })
+        .then(function(_post) {
+          should.not.exist(_post);
+        });
+    });
+  });
+});

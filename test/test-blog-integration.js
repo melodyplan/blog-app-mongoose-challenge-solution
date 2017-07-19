@@ -32,7 +32,10 @@ function generateTitle() {
 
 function generateAuthor() {
   const authors = [
-    {'firstName': faker.name.firstName(), 'lastName': faker.name.lastName()}, {'firstName': faker.name.firstName(), 'lastName': faker.name.lastName()}, {'firstName': faker.name.firstName(), 'lastName': faker.name.lastName()}];
+    {'firstName': faker.name.firstName(), 'lastName': faker.name.lastName()},
+    {'firstName': faker.name.firstName(), 'lastName': faker.name.lastName()},
+    {'firstName': faker.name.firstName(), 'lastName': faker.name.lastName()}
+  ];
   return authors[Math.floor(Math.random() * authors.length)];
 }
 
@@ -79,7 +82,10 @@ describe('Blog API resource', function() {
         .then(function(_res) {
           res = _res;
           res.should.have.status(200);
-          res.body.posts.should.have.length.of(count);
+          return BlogPost.count();
+        })
+        .then(function(count) {
+          res.body.length.should.equal(count);
         });
     });
 
@@ -90,25 +96,25 @@ describe('Blog API resource', function() {
         .then(function(res) {
           res.should.have.status(200);
           res.should.be.json;
-          res.body.posts.should.be.a('array');
-          res.body.posts.should.have.length.of.at.least(1);
+          res.body.should.be.a('array');
+          res.body.should.have.length.of.at.least(1);
 
-          res.body.posts.forEach(function(post) {
+          res.body.forEach(function(post) {
             post.should.be.a('object');
             //not sure if we need id?
-            post.should.include.keys(
-              'id', 'title', 'author', 'content');
-            });
-            resBlogPost = res.body.posts[0];
-            return BlogPost.findById(resBlogPost.id);
-          })
-          .then(function(post) {
-            resBlogPost.id.should.equal(post.id);
-            resBlogPost.title.should.equal(post.title);
-            //is author should.contain since there is a firstName and lastName?
-            resBlogPost.author.should.equal(post.author);
-            resBlogPost.content.should.equal(post.content)
+            post.should.include.keys('id', 'title', 'author', 'content');
           });
+          resBlogPost = res.body[0];
+          return BlogPost.findById(resBlogPost.id);
+        })
+        .then(function(post) {
+          resBlogPost.id.should.equal(post.id);
+          resBlogPost.title.should.equal(post.title);
+          //is author should.contain since there is a firstName and lastName?
+          const authorName = post.author.firstName + ' ' + post.author.lastName;
+          resBlogPost.author.should.equal(authorName);
+          resBlogPost.content.should.equal(post.content)
+        });
     });
   });
 
@@ -128,14 +134,14 @@ describe('Blog API resource', function() {
             'id', 'title', 'author', 'content');
           res.body.title.should.equal(newBlogPost.title);
           res.body.id.should.not.be.null;
-          res.body.author.should.equal(newBlogPost.author);
+          const authorName = newBlogPost.author.firstName + ' ' + newBlogPost.author.lastName;
+          res.body.author.should.equal(authorName);
           res.body.content.should.equal(newBlogPost.content);
 
           return BlogPost.findById(res.body.id);
         })
         .then(function(post) {
           post.title.should.equal(newBlogPost.title);
-          post.author.should.equal(newBlogPost.author);
           post.content.should.equal(newBlogPost.content);
         });
     });
@@ -146,7 +152,7 @@ describe('Blog API resource', function() {
       const updateData = {
         title: 'See the light and the wind of the sea',
         author: {
-          firstName: 'it calls'
+          firstName: 'it calls',
           lastName: 'to me'
         },
         content: 'and no one knows, how far it gooooesss'
@@ -161,14 +167,13 @@ describe('Blog API resource', function() {
             .put(`/posts/${post.id}`)
             .send(updateData);
         })
-        .then(fundtion(res) {
-          res.should.have.status(204);
+        .then(function(res) {
+          res.should.have.status(201);
 
           return BlogPost.findById(updateData.id).exec();
         })
         .then(function(post) {
           post.title.should.equal(updateData.title);
-          post.author.should.equal(updateData.author);
           post.content.should.equal(updateData.content)
         });
     });
